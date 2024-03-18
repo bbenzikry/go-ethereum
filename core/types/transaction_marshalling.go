@@ -271,7 +271,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 			}
 		}
 
-	case DynamicFeeTxType:
+	case DynamicFeeTxType, 126:
 		var itx DynamicFeeTx
 		inner = &itx
 		if dec.ChainID == nil {
