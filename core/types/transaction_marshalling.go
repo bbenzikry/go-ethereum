@@ -174,6 +174,59 @@ func (tx *Transaction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&enc)
 }
 
+func (tx *Transaction) handlel2Tx(dec txJSON) (TxData, error) {
+	var itx DynamicFeeTx
+	if dec.ChainID == nil {
+		dec.ChainID = new(hexutil.Big)
+	}
+	itx.Nonce = uint64(*dec.Nonce)
+	if dec.To != nil {
+		itx.To = dec.To
+	}
+	if dec.Gas == nil {
+		return nil, errors.New("missing required field 'gas' for txdata")
+	}
+	itx.Gas = uint64(*dec.Gas)
+	if dec.MaxPriorityFeePerGas == nil {
+		dec.MaxPriorityFeePerGas = new(hexutil.Big)
+	}
+	itx.GasTipCap = (*big.Int)(dec.MaxPriorityFeePerGas)
+	if dec.MaxFeePerGas == nil {
+		dec.MaxFeePerGas = new(hexutil.Big)
+	}
+	itx.GasFeeCap = (*big.Int)(dec.MaxFeePerGas)
+	if dec.Value == nil {
+		dec.Value = new(hexutil.Big)
+	}
+	itx.Value = (*big.Int)(dec.Value)
+	if dec.Input == nil {
+		return nil, errors.New("missing required field 'input' in transaction")
+	}
+	itx.Data = *dec.Input
+	if dec.AccessList != nil {
+		itx.AccessList = *dec.AccessList
+	}
+
+	// signature R
+	if dec.R == nil {
+		return nil, errors.New("missing required field 'r' in transaction")
+	}
+	itx.R = (*big.Int)(dec.R)
+	// signature S
+	if dec.S == nil {
+		return nil, errors.New("missing required field 's' in transaction")
+	}
+	itx.S = (*big.Int)(dec.S)
+	// signature V
+	var err error
+	itx.V, err = dec.yParityValue()
+	if err != nil {
+		return nil, err
+	}
+
+	return &itx, nil
+}
+
 // UnmarshalJSON unmarshals from JSON.
 func (tx *Transaction) UnmarshalJSON(input []byte) error {
 	var dec txJSON
@@ -237,7 +290,8 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		var itx AccessListTx
 		inner = &itx
 		if dec.ChainID == nil {
-			return errors.New("missing required field 'chainId' in transaction")
+			// return errors.New("missing required field 'chainId' in transaction")
+			dec.ChainID = new(hexutil.Big)
 		}
 		itx.ChainID = (*big.Int)(dec.ChainID)
 		if dec.Nonce == nil {
@@ -287,12 +341,12 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 				return err
 			}
 		}
-
-	case DynamicFeeTxType, 126:
+	case DynamicFeeTxType:
 		var itx DynamicFeeTx
 		inner = &itx
 		if dec.ChainID == nil {
-			return errors.New("missing required field 'chainId' in transaction")
+			// return errors.New("missing required field 'chainId' in transaction")
+			dec.ChainID = new(hexutil.Big)
 		}
 		itx.ChainID = (*big.Int)(dec.ChainID)
 		if dec.Nonce == nil {
@@ -351,7 +405,8 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 		var itx BlobTx
 		inner = &itx
 		if dec.ChainID == nil {
-			return errors.New("missing required field 'chainId' in transaction")
+			// return errors.New("missing required field 'chainId' in transaction")
+			dec.ChainID = new(hexutil.Big)
 		}
 		var overflow bool
 		itx.ChainID, overflow = uint256.FromBig(dec.ChainID.ToInt())
@@ -506,7 +561,12 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 				return err
 			}
 		}
-
+	case 126:
+		/** Opstack handling **/
+		inner, err = tx.handlel2Tx(dec)
+		if err != nil {
+			return err
+		}
 	default:
 		return ErrTxTypeNotSupported
 	}
