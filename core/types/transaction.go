@@ -50,6 +50,7 @@ const (
 	DynamicFeeTxType = 0x02
 	BlobTxType       = 0x03
 	SetCodeTxType    = 0x04
+	OpstackTxType    = 0x7e
 )
 
 // Transaction is an Ethereum transaction.
@@ -206,14 +207,12 @@ func (tx *Transaction) decodeTyped(b []byte) (TxData, error) {
 	switch b[0] {
 	case AccessListTxType:
 		inner = new(AccessListTx)
-	case DynamicFeeTxType:
+	case DynamicFeeTxType, OpstackTxType:
 		inner = new(DynamicFeeTx)
 	case BlobTxType:
 		inner = new(BlobTx)
 	case SetCodeTxType:
 		inner = new(SetCodeTx)
-	case 126:
-		inner = new(DynamicFeeTx)
 	default:
 		return nil, ErrTxTypeNotSupported
 	}
