@@ -561,7 +561,7 @@ func (tx *Transaction) UnmarshalJSON(input []byte) error {
 				return err
 			}
 		}
-	case 126:
+	case OpstackTxType:
 		/** Opstack handling **/
 		inner, err = tx.handlel2Tx(dec)
 		if err != nil {
